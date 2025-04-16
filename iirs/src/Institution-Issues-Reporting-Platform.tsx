@@ -71,13 +71,14 @@ dateJoined: '2025-04-01'
 ]);
 const [issues, setIssues] = useState<Issue[]>([
 {
-id: 1,
-title: "Broken Water Fountain",
-category: "Hostel",
-description: "The water fountain on the second floor of Building A is not working properly...",
-location: "Building A, Second Floor",
-status: "In Progress",
-date: "April 15, 2025"
+    id: 1,
+    title: "Broken Water Fountain",
+    category: "Hostel",
+    description: "The water fountain on the second floor of Building A is not working properly...",
+    location: "Building A, Second Floor",
+    status: "In Progress",
+    date: "April 15, 2025",
+    reporterId: 0
 }
 ]);
 const addNewIssue = (issue: Omit<Issue, 'id'>) => {
@@ -331,12 +332,13 @@ const description = (document.getElementById('issueDescription') as HTMLTextArea
 const location = (document.getElementById('issueLocation') as HTMLInputElement).value;
 if (title && category && description && location) {
 addNewIssue({
-title,
-category,
-description,
-location,
-status: "New",
-date: new Date().toLocaleDateString()
+    title,
+    category,
+    description,
+    location,
+    status: "New",
+    date: new Date().toLocaleDateString(),
+    reporterId: 0
 });
 document.getElementById('issueModal')?.classList.add('hidden');
 // Reset form
@@ -607,8 +609,8 @@ const myChart = echarts.init(chartDom);
 const option = {
 animation: false,
 tooltip: {
-trigger: 'item',
-formatter: '{b}: {c} ({d}%)'
+	trigger: 'item' as const, // Ensure the value matches the expected type
+	formatter: '{b}: {c} ({d}%)'
 },
 series: [
 {
