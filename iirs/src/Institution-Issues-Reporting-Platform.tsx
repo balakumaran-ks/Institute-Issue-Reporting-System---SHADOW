@@ -283,7 +283,7 @@ animation: fadeInOut 3s ease-in-out forwards;
                 loginType === "student"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700"
-              } whitespace-nowrap`}
+              } whitespace-nowrap cursor-pointer`}
             >
               <i className="fas fa-user-graduate mr-2"></i>
               Student Login
@@ -294,7 +294,7 @@ animation: fadeInOut 3s ease-in-out forwards;
                 loginType === "admin"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700"
-              } whitespace-nowrap`}
+              } whitespace-nowrap cursor-pointer`}
             >
               <i className="fas fa-user-shield mr-2"></i>
               Admin Login
@@ -394,17 +394,17 @@ animation: fadeInOut 3s ease-in-out forwards;
                     // Reset button state on error
                     btn.removeAttribute("disabled");
                     btn.innerHTML =
-                      '<i class="fab fa-google mr-2"></i>Or sign in with Google';
+                      '<i class="fab fa-google mr-2"></i>Sign in with Google';
                     setToastMessage("Google sign in failed. Please try again.");
                     setShowToast(true);
                     setTimeout(() => setShowToast(false), 3000);
                   }
                 }
               }}
-              className="!rounded-button text-blue-600 hover:text-blue-800 text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              className="!rounded-button w-full px-6 py-3 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 cursor-pointer whitespace-nowrap relative flex items-center justify-center"
             >
-              <i className="fab fa-google mr-2"></i>
-              Or sign in with Google
+              <i className="fab fa-google text-red-600 mr-2"></i>
+              Sign in with Google
             </button>
           </div>
         </div>
@@ -416,6 +416,9 @@ animation: fadeInOut 3s ease-in-out forwards;
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
     const [newComment, setNewComment] = useState("");
+    const [showIssueModal, setShowIssueModal] = useState(false);
+    const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+    const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
     const categories = [
       "All",
       "Hostel",
@@ -436,12 +439,41 @@ animation: fadeInOut 3s ease-in-out forwards;
         return matchesSearch && matchesCategory && isVisible;
       })
       .sort((a, b) => {
-        // Calculate vote score (upvotes - downvotes)
-        const scoreA = a.upvotes - a.downvotes;
-        const scoreB = b.upvotes - b.downvotes;
-        // Sort by vote score in descending order (highest first)
-        return scoreB - scoreA;
+        // Calculate net votes (upvotes - downvotes)
+        const netVotesA = a.upvotes - a.downvotes;
+        const netVotesB = b.upvotes - b.downvotes;
+        // Sort by net votes in descending order
+        return netVotesB - netVotesA;
       });
+
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files) {
+        const newPhotos: string[] = [];
+        const newPreviews: string[] = [];
+
+        Array.from(files).forEach((file) => {
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64String = reader.result as string;
+              newPhotos.push(base64String);
+              newPreviews.push(base64String);
+              if (newPhotos.length === files.length) {
+                setSelectedPhotos((prev) => [...prev, ...newPhotos]);
+                setPhotoPreviews((prev) => [...prev, ...newPreviews]);
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+    };
+
+    const removePhoto = (index: number) => {
+      setSelectedPhotos((prev) => prev.filter((_, i) => i !== index));
+      setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+    };
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -454,11 +486,7 @@ animation: fadeInOut 3s ease-in-out forwards;
               <div className="flex items-center space-x-4">
                 <button
                   id="reportIssueBtn"
-                  onClick={() =>
-                    document
-                      .getElementById("issueModal")
-                      ?.classList.remove("hidden")
-                  }
+                  onClick={() => setShowIssueModal(true)}
                   className="!rounded-button px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 cursor-pointer whitespace-nowrap"
                 >
                   <i className="fas fa-plus mr-2"></i>
@@ -667,6 +695,186 @@ animation: fadeInOut 3s ease-in-out forwards;
             </div>
           )}
         </main>
+
+        {/* Issue Reporting Modal */}
+        {showIssueModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-gray-900">
+                  Report New Issue
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowIssueModal(false);
+                    setSelectedPhotos([]);
+                    setPhotoPreviews([]);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const newIssue: Omit<
+                    Issue,
+                    "id" | "upvotes" | "downvotes" | "upvotedBy" | "downvotedBy"
+                  > = {
+                    title: formData.get("title") as string,
+                    category: formData.get("category") as string,
+                    description: formData.get("description") as string,
+                    location: formData.get("location") as string,
+                    status: "New",
+                    date: new Date().toLocaleDateString(),
+                    reporterId: currentUser.id,
+                    photos: selectedPhotos,
+                    isSensitive: formData.get("isSensitive") === "on",
+                    comments: [],
+                  };
+                  addNewIssue(newIssue);
+                  setShowIssueModal(false);
+                  setSelectedPhotos([]);
+                  setPhotoPreviews([]);
+                  e.currentTarget.reset();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    name="category"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="Hostel">Hostel</option>
+                    <option value="Classroom">Classroom</option>
+                    <option value="Facilities">Facilities</option>
+                    <option value="IT Services">IT Services</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    required
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="isSensitive"
+                    id="isSensitive"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="isSensitive"
+                    className="ml-2 block text-sm text-gray-700"
+                  >
+                    This is a sensitive issue (only visible to admins)
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Photos (Optional)
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
+                    <div className="space-y-1 text-center">
+                      <div className="flex text-sm text-gray-600">
+                        <label
+                          htmlFor="file-upload"
+                          className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                        >
+                          <span>Upload photos</span>
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            className="sr-only"
+                            multiple
+                            accept="image/*"
+                            onChange={handlePhotoChange}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 10MB
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Photo Previews */}
+                  {photoPreviews.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {photoPreviews.map((preview, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <i className="fas fa-times text-xs"></i>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowIssueModal(false)}
+                    className="!rounded-button px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="!rounded-button px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Submit Issue
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -952,6 +1160,11 @@ animation: fadeInOut 3s ease-in-out forwards;
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {issues
                     .filter((issue) => !issue.isSensitive)
+                    .sort((a, b) => {
+                      const netVotesA = a.upvotes - a.downvotes;
+                      const netVotesB = b.upvotes - b.downvotes;
+                      return netVotesB - netVotesA;
+                    })
                     .map((issue) => (
                       <div
                         key={issue.id}
@@ -1003,6 +1216,11 @@ animation: fadeInOut 3s ease-in-out forwards;
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {issues
                       .filter((issue) => issue.isSensitive)
+                      .sort((a, b) => {
+                        const netVotesA = a.upvotes - a.downvotes;
+                        const netVotesB = b.upvotes - b.downvotes;
+                        return netVotesB - netVotesA;
+                      })
                       .map((issue) => (
                         <div
                           key={issue.id}
