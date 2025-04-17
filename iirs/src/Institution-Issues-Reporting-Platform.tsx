@@ -1,5 +1,5 @@
 // The exported code uses Tailwind CSS. Install Tailwind CSS in your dev environment to ensure all styles work.
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as echarts from "echarts";
 interface User {
   id: number;
@@ -419,6 +419,8 @@ animation: fadeInOut 3s ease-in-out forwards;
     const [showIssueModal, setShowIssueModal] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
     const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+    const [showErrorToast, setShowErrorToast] = useState(false);
+
     const categories = [
       "All",
       "Hostel",
@@ -426,6 +428,32 @@ animation: fadeInOut 3s ease-in-out forwards;
       "Facilities",
       "IT Services",
     ];
+
+    useEffect(() => {
+      const fetchIssues = async () => {
+        try {
+          const response = await fetch("http://localhost:5000/api/issues", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch issues");
+          }
+
+          const data = await response.json();
+          setIssues(data);
+        } catch (err) {
+          console.error("Error fetching issues:", err);
+          setShowErrorToast(true);
+          setTimeout(() => setShowErrorToast(false), 5000);
+        }
+      };
+
+      fetchIssues();
+    }, []);
+
     const filteredIssues = issues
       .filter((issue) => {
         const matchesSearch =
@@ -477,6 +505,16 @@ animation: fadeInOut 3s ease-in-out forwards;
 
     return (
       <div className="min-h-screen bg-gray-50">
+        {showErrorToast && (
+          <div className="fixed top-4 right-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded shadow-lg animate-fade-in-out">
+            <div className="flex items-center">
+              <i className="fas fa-exclamation-circle mr-2"></i>
+              <p>
+                Some kind of error happened. Your issues will be stored locally.
+              </p>
+            </div>
+          </div>
+        )}
         <nav className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16 items-center">
@@ -885,6 +923,33 @@ animation: fadeInOut 3s ease-in-out forwards;
     const [showUserModal, setShowUserModal] = useState(false);
     const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
     const [newComment, setNewComment] = useState("");
+    const [showErrorToast, setShowErrorToast] = useState(false);
+
+    useEffect(() => {
+      const fetchIssues = async () => {
+        try {
+          const response = await fetch("http://localhost:5000/api/issues", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch issues");
+          }
+
+          const data = await response.json();
+          setIssues(data);
+        } catch (err) {
+          console.error("Error fetching issues:", err);
+          setShowErrorToast(true);
+          setTimeout(() => setShowErrorToast(false), 5000);
+        }
+      };
+
+      fetchIssues();
+    }, []);
+
     const issuesByStatus = {
       new: issues.filter((issue) => issue.status === "New").length,
       inProgress: issues.filter((issue) => issue.status === "In Progress")
@@ -947,6 +1012,16 @@ animation: fadeInOut 3s ease-in-out forwards;
     }, [activeTab, issues]);
     return (
       <div className="min-h-screen bg-gray-50">
+        {showErrorToast && (
+          <div className="fixed top-4 right-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded shadow-lg animate-fade-in-out">
+            <div className="flex items-center">
+              <i className="fas fa-exclamation-circle mr-2"></i>
+              <p>
+                Some kind of error happened. Your issues will be stored locally.
+              </p>
+            </div>
+          </div>
+        )}
         <nav className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16 items-center">

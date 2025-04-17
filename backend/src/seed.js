@@ -179,22 +179,30 @@ const seedDatabase = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log("Connected to MongoDB");
 
-    // Clear existing issues
+    // Clear existing data
     await Issue.deleteMany({});
-    console.log("Cleared existing issues");
+    await User.deleteMany({});
+    console.log("Cleared existing data");
 
-    // Create a test admin user if not exists
-    let adminUser = await User.findOne({ email: "admin@example.com" });
-    if (!adminUser) {
-      adminUser = new User({
-        name: "Admin User",
-        email: "admin@example.com",
-        password: "admin123",
-        role: "admin",
-      });
-      await adminUser.save();
-      console.log("Created admin user");
-    }
+    // Create admin user
+    const adminUser = new User({
+      name: "Admin User",
+      email: "admin@example.com",
+      password: "admin123",
+      role: "admin",
+    });
+    await adminUser.save();
+    console.log("Created admin user");
+
+    // Create student user
+    const studentUser = new User({
+      name: "Student User",
+      email: "student@example.com",
+      password: "student123",
+      role: "user",
+    });
+    await studentUser.save();
+    console.log("Created student user");
 
     // Create issues with random data
     const issues = await Promise.all(
@@ -209,10 +217,10 @@ const seedDatabase = async () => {
             Math.floor(Math.random() * 3),
             Math.floor(Math.random() * 28) + 1
           ),
-          reporterId: adminUser._id,
+          reporterId: studentUser._id, // Using student as reporter
           comments: issueData.comments.map((comment) => ({
             ...comment,
-            userId: adminUser._id,
+            userId: Math.random() > 0.5 ? adminUser._id : studentUser._id, // Randomly assign comments to admin or student
           })),
         });
         return issue.save();
@@ -220,6 +228,14 @@ const seedDatabase = async () => {
     );
 
     console.log(`Created ${issues.length} issues`);
+    console.log("\nLogin Credentials:");
+    console.log("Admin:");
+    console.log("Email: admin@example.com");
+    console.log("Password: admin123");
+    console.log("\nStudent:");
+    console.log("Email: student@example.com");
+    console.log("Password: student123");
+
     process.exit(0);
   } catch (error) {
     console.error("Error seeding database:", error);
